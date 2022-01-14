@@ -307,7 +307,7 @@ int main(void)
 	LCD_init(&ST7735);
 	LCD_flush(&ST7735);
 
-	uint8_t Round = 0, showSlash = 0;
+	uint8_t i = 0, j = 0;
 	clearScreen();
 
 //	UART2.huart = &huart3;
@@ -334,7 +334,7 @@ int main(void)
 		  {
 			  lastUpdate = HAL_GetTick();
 			  i++;
-			  if(Round >= 5){Round=0; showSlash^=1;}
+			  if(i >= 5){i=0;j^=1;}
 
 			  HAL_RTC_GetTime(&hrtc, &NowTime, RTC_FORMAT_BCD);
 			  HAL_RTC_GetDate(&hrtc, &NowDate, RTC_FORMAT_BCD);
