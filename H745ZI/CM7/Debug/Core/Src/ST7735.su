@@ -1,0 +1,3 @@
+ST7735.c:22:6:LCD_init	16	static
+ST7735.c:47:6:LCD_flush	16	static
+ST7735.c:52:10:LCDBufferAddr	4	static

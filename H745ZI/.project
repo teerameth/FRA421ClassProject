@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>H745ZI_Project</name>
+	<name>h745LCDLegacy</name>
 	<comment></comment>
 	<projects>
 	</projects>
@@ -15,7 +15,7 @@
 	</natures>
 	<filteredResources>
 		<filter>
-			<id>1630460707969</id>
+			<id>1629481806585</id>
 			<name></name>
 			<type>22</type>
 			<matcher>
