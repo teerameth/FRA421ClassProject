@@ -1,0 +1,6 @@
+Uart.c:13:6:UARTInit	16	static
+Uart.c:24:6:UARTResetStart	16	static
+Uart.c:28:10:UARTGetRxHead	16	static
+Uart.c:32:9:UARTReadChar	32	static
+Uart.c:47:6:UARTTxDumpBuffer	24	static
+Uart.c:74:6:UARTTxWrite	32	static
