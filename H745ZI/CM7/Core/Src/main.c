@@ -93,6 +93,7 @@ RTC_TimeTypeDef NowTime;
 RTC_DateTypeDef NowDate;
 //const unsigned long UPDATE_INTERVAL_MS = 100;
 unsigned long lastUpdate = 0;
+unsigned long lastUpdate2 = 0;
 LCDHandle ST7735 = { 0 };
 //UARTStucrture UART2 ={ 0 };
 
@@ -321,12 +322,12 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	while (1) {
-		if (HAL_HSEM_FastTake(1) == HAL_OK)		// Lock shared variable (quaternion)
+		if (HAL_HSEM_FastTake(1) == HAL_OK && HAL_GetTick() - lastUpdate2 > 50)		// Lock shared variable (quaternion)
 			{
 				// Read shared quaternion components to display
-
-//				len = sprintf(MSG, "q:%.2f\t%.2f\t%.2f\t%.2f\n", q->x, q->y, q->z, q->w);	// Read quaternion from shared memory to print out
-//				HAL_UART_Transmit(&huart3, MSG, len, 100);	// Print quaternion for debug (via serial)
+				lastUpdate2 = HAL_GetTick();
+				len = sprintf(MSG, "q:%.2f\t%.2f\t%.2f\t%.2f\n", q->x, q->y, q->z, q->w);	// Read quaternion from shared memory to print out
+				HAL_UART_Transmit(&huart3, MSG, len, 100);	// Print quaternion for debug (via serial)
 				HAL_HSEM_Release(1, 0);				// Unlock shared variable
 			}
     /* USER CODE END WHILE */
