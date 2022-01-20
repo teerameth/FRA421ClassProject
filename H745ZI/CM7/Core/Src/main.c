@@ -134,6 +134,64 @@ static void MX_USART3_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+//klui code
+int Position[128][120];
+void clearPosition(){
+	for(int i=0; i<128; i++){
+		for(int j=0; j<120; j++){
+			Position[i][j]=0;
+		}
+	}
+}
+void drawCircle(int xc,int yc,int x,int y){
+	for(int i=0; i<=x; i++){
+		for(int j=0; j<=y; j++){
+			Position[xc+i][yc+j]=255;
+			Position[xc-i][yc+j]=255;
+			Position[xc+i][yc-j]=255;
+			Position[xc-i][yc-j]=255;
+			Position[xc+j][yc+i]=255;
+			Position[xc-j][yc+i]=255;
+			Position[xc+j][yc-i]=255;
+			Position[xc-j][yc-i]=255;
+		}
+	}
+}
+void circle(int xc,int yc,int r){
+	int x=0, y=r;
+	int d=3-2*r;
+	drawCircle(xc,yc,x,y);
+	while(y>=x){
+		x++;
+		if(d>0){
+			y--;
+			d=d+4*(x-y)+10;
+		}
+		else{
+			d=d+4*x+6;
+		}
+		drawCircle(xc,yc,x,y);
+		HAL_Delay(50);
+	}
+}
+void coodinate2framememory(){
+	int a=3072;
+	for(int j=0; j<120; j++){
+		for(int i=0; i<128; i++){
+			if(Position[i][j]==0){
+				Framememory[a]=255;
+				Framememory[a+1]=255;
+				Framememory[a+2]=255;
+			}
+			else{
+				Framememory[a]=255;
+				Framememory[a+1]=0;
+				Framememory[a+2]=0;
+			}
+			a=a+3;
+		}
+	}
+}
 //uint16_t toHighByte(uint16_t num)
 //{
 //    return (num << 8) & 0xFF00;
@@ -242,7 +300,15 @@ void clearScreen(){
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+	float ax=10.0;
+	float ay=5.0;
+	float dt=0.5;
+	float vx=ax*dt;
+	float vy=ay*dt;
+	float posx=10.0;
+	float posy=10.0;
+	float sx=0.0;
+	float sy=0.0;
   /* USER CODE END 1 */
 /* USER CODE BEGIN Boot_Mode_Sequence_0 */
 	int32_t timeout;
@@ -329,9 +395,32 @@ int main(void)
 				if(HAL_HSEM_FastTake(1) == HAL_OK) break;	// Wait until shared memory is available then lock it
 			}
 			// Read shared quaternion components to display
-			len = sprintf(MSG, "q:%.2f\t%.2f\t%.2f\t%.2f\n", q->x, q->y, q->z, q->w);	// Read quaternion from shared memory to print out
+//			len = sprintf(MSG, "q:%.2f\t%.2f\t%.2f\t%.2f\n", q->x, q->y, q->z, q->w);	// Read quaternion from shared memory to print out
+
 			HAL_HSEM_Release(1, 0);				// Unlock shared variable
-			HAL_UART_Transmit(&huart3, MSG, len, 100);	// Print quaternion for debug (via serial)
+
+//			HAL_UART_Transmit(&huart3, MSG, len, 100);	// Print quaternion for debug (via serial)
+			//klui code
+			sx=vx*dt;
+			sy=vy*dt;
+			posx+=sx;
+			posy+=sy;
+			clearPosition();
+			circle(round(posx),round(posy),10);
+			coodinate2framememory();
+			if(posx>=118 || posx<=0){
+				vx=-vx;
+			}
+			else{
+				vx=ax*dt;
+			}
+			if(posy>=110 || posy<=0){
+				vy=-vy;
+			}
+			else{
+				vy=ay*dt;
+			}
+			//end klui code
 		}
     /* USER CODE END WHILE */
 
