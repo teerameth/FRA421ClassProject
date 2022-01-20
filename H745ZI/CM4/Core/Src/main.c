@@ -47,14 +47,7 @@ typedef struct {
 	float x, y, z, w;	// quaternion 4 components
 }quaternion;
 quaternion *q = (quaternion*)(0x38000000);	// Allocated shared memory for to store quaternion globally
-//float *SEq_1 = (float*)(0x38000000);
-//float *SEq_2 = (float*)(0x38000004);
-//float *SEq_3 = (float*)(0x38000008);
-//float *SEq_4 = (float*)(0x38000012);
-//SEq_1 = 1.0f;
-//SEq_2 = 0.0f;
-//SEq_3 = 0.0f;
-//SEq_4 = 0.0f;
+unsigned long lastTime = 0;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -321,19 +314,20 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  MPU6050_Read_Accel(&hi2c1);	// Read accelerometer
-	  MPU6050_Read_Gyro(&hi2c1);	// Read gyroscope
-	  filterUpdate();				// Update filter (update variables SEq_1, SEq_2, SEq_3, SEq_4)
-	  if (HAL_HSEM_FastTake(1) == HAL_OK)		// Lock shared variable (quaternion)
-	  {
-		  // Update shared quaternion components (x, y, z, w)
-		  q->x = SEq_1;
-		  q->y = SEq_2;
-		  q->z = SEq_3;
-		  q->w = SEq_4;
-		  HAL_HSEM_Release(1, 0);				// Unlock shared variable
+	  if (HAL_GetTick() - lastTime >= 20){	// update filter using frequency <= 50 Hz
+		  MPU6050_Read_Accel(&hi2c1);	// Read accelerometer
+		  MPU6050_Read_Gyro(&hi2c1);	// Read gyroscope
+		  filterUpdate();				// Update filter (update variables SEq_1, SEq_2, SEq_3, SEq_4)
+		  if (HAL_HSEM_FastTake(1) == HAL_OK)		// Lock shared variable (quaternion)
+		  {
+			  // Update shared quaternion components (x, y, z, w)
+			  q->x = SEq_1;
+			  q->y = SEq_2;
+			  q->z = SEq_3;
+			  q->w = SEq_4;
+			  HAL_HSEM_Release(1, 0);				// Unlock shared variable
+		  }
 	  }
-	  HAL_Delay(20);				// update filter using frequency = 50 Hz
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
