@@ -47,7 +47,7 @@ typedef struct {
 	float x, y, z, w;	// quaternion 4 components
 }quaternion;
 quaternion *q = (quaternion*)(0x38000000);	// Allocated shared memory for to store quaternion globally
-unsigned long lastTime = 0;
+unsigned long lastTime = 0, presentTime = 0;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -314,7 +314,9 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  if (HAL_GetTick() - lastTime >= 20){	// update filter using frequency <= 50 Hz
+	  presentTime = HAL_GetTick();
+	  if (presentTime - lastTime >= 20){	// update filter using frequency <= 50 Hz
+		  lastTime = presentTime;
 		  MPU6050_Read_Accel(&hi2c1);	// Read accelerometer
 		  MPU6050_Read_Gyro(&hi2c1);	// Read gyroscope
 		  filterUpdate();				// Update filter (update variables SEq_1, SEq_2, SEq_3, SEq_4)
