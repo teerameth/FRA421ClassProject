@@ -322,14 +322,17 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	while (1) {
-		if (HAL_HSEM_FastTake(1) == HAL_OK && HAL_GetTick() - lastUpdate2 > 50)		// Lock shared variable (quaternion)
-			{
-				// Read shared quaternion components to display
-				lastUpdate2 = HAL_GetTick();
-				len = sprintf(MSG, "q:%.2f\t%.2f\t%.2f\t%.2f\n", q->x, q->y, q->z, q->w);	// Read quaternion from shared memory to print out
-				HAL_UART_Transmit(&huart3, MSG, len, 100);	// Print quaternion for debug (via serial)
-				HAL_HSEM_Release(1, 0);				// Unlock shared variable
+		if (HAL_GetTick() - lastUpdate2 >= 20)		// Lock shared variable (quaternion)
+		{
+			lastUpdate2 = HAL_GetTick();
+			while(1){
+				if(HAL_HSEM_FastTake(1) == HAL_OK) break;	// Wait until shared memory is available then lock it
 			}
+			// Read shared quaternion components to display
+			len = sprintf(MSG, "q:%.2f\t%.2f\t%.2f\t%.2f\n", q->x, q->y, q->z, q->w);	// Read quaternion from shared memory to print out
+			HAL_HSEM_Release(1, 0);				// Unlock shared variable
+			HAL_UART_Transmit(&huart3, MSG, len, 100);	// Print quaternion for debug (via serial)
+		}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

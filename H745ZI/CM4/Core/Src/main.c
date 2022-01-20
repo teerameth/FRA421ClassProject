@@ -320,15 +320,15 @@ int main(void)
 		  MPU6050_Read_Accel(&hi2c1);	// Read accelerometer
 		  MPU6050_Read_Gyro(&hi2c1);	// Read gyroscope
 		  filterUpdate();				// Update filter (update variables SEq_1, SEq_2, SEq_3, SEq_4)
-		  if (HAL_HSEM_FastTake(1) == HAL_OK)		// Lock shared variable (quaternion)
-		  {
-			  // Update shared quaternion components (x, y, z, w)
-			  q->x = SEq_1;
-			  q->y = SEq_2;
-			  q->z = SEq_3;
-			  q->w = SEq_4;
-			  HAL_HSEM_Release(1, 0);				// Unlock shared variable
+		  while(1){
+			  if (HAL_HSEM_FastTake(1) == HAL_OK)break;	// Wait until memory is unlocked then lock it (quaternion)
 		  }
+		  // Update shared quaternion components (x, y, z, w)
+		  q->x = SEq_1;
+		  q->y = SEq_2;
+		  q->z = SEq_3;
+		  q->w = SEq_4;
+		  HAL_HSEM_Release(1, 0);				// Unlock shared variable
 	  }
     /* USER CODE END WHILE */
 

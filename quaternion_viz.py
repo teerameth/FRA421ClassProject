@@ -12,7 +12,7 @@ def euler_from_quaternion(x, y, z, w):
     yaw_z = math.atan2(t3, t4)
     return roll_x, pitch_y, yaw_z  # in radians
 
-with serial.Serial('COM8', 115200, timeout=1) as ser:
+with serial.Serial('COM5', 115200, timeout=1) as ser:
     while True:
         line = ser.readline()
         # print(line.decode('utf-8'))
@@ -21,4 +21,4 @@ with serial.Serial('COM8', 115200, timeout=1) as ser:
             string = string[string.find('q')+2:-1]
             q = string.split('\t')
             r, p, y = euler_from_quaternion(float(q[0]), float(q[1]), float(q[2]), float(q[3]))
-            print(r, p, y)
+            print("%.2f %.2f %.2f"%(r, p, y))
