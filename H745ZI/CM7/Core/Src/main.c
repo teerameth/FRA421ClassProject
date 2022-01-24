@@ -36,6 +36,10 @@ typedef struct {
 	float x, y, z, w;	// quaternion 4 components
 }quaternion;
 quaternion *q = (quaternion*)(0x38000000);	// Allocated shared memory for to store quaternion globally
+
+typedef struct {
+    double roll, pitch, yaw;
+}EulerAngles;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -191,6 +195,28 @@ void coodinate2framememory(){
 			a=a+3;
 		}
 	}
+}
+EulerAngles convert2euler(quaternion q){
+	EulerAngles angles;
+
+	// roll (x-axis rotation)
+	double sinr_cosp = 2 * (q.w * q.x + q.y * q.z);
+	double cosr_cosp = 1 - 2 * (q.x * q.x + q.y * q.y);
+	angles.roll = atan2(sinr_cosp, cosr_cosp);
+
+	// pitch (y-axis rotation)
+	double sinp = 2 * (q.w * q.y - q.z * q.x);
+	if (abs(sinp) >= 1)
+	    angles.pitch = copysign(M_PI / 2, sinp); // use 90 degrees if out of range
+	else
+	    angles.pitch = asin(sinp);
+
+	// yaw (z-axis rotation)
+	double siny_cosp = 2 * (q.w * q.z + q.x * q.y);
+	double cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
+	angles.yaw = atan2(siny_cosp, cosy_cosp);
+
+	return angles;
 }
 //uint16_t toHighByte(uint16_t num)
 //{
@@ -395,11 +421,11 @@ int main(void)
 				if(HAL_HSEM_FastTake(1) == HAL_OK) break;	// Wait until shared memory is available then lock it
 			}
 			// Read shared quaternion components to display
-//			len = sprintf(MSG, "q:%.2f\t%.2f\t%.2f\t%.2f\n", q->x, q->y, q->z, q->w);	// Read quaternion from shared memory to print out
+			len = sprintf(MSG, "q:%.2f\t%.2f\t%.2f\t%.2f\n", q->x, q->y, q->z, q->w);	// Read quaternion from shared memory to print out
 
 			HAL_HSEM_Release(1, 0);				// Unlock shared variable
 
-//			HAL_UART_Transmit(&huart3, MSG, len, 100);	// Print quaternion for debug (via serial)
+			HAL_UART_Transmit(&huart3, MSG, len, 100);	// Print quaternion for debug (via serial)
 			//klui code
 			sx=vx*dt;
 			sy=vy*dt;
