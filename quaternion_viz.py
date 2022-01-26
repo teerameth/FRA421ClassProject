@@ -1,4 +1,6 @@
 import serial, math
+
+from sympy import sring
 def euler_from_quaternion(x, y, z, w):
     t0 = +2.0 * (w * x + y * z)
     t1 = +1.0 - 2.0 * (x * x + y * y)
@@ -19,7 +21,8 @@ with serial.Serial('COM10', 115200, timeout=1) as ser:
         string = line.decode('utf-8')
         if 'q' in string:
             string = string[string.find('q')+2:-1]
+            # print(string)
             q = string.split('\t')
             r, p, y = euler_from_quaternion(float(q[0]), float(q[1]), float(q[2]), float(q[3]))
-            # print("%.2f %.2f %.2f"%(r*(180/3.14), p*(180/3.14), y*(180/3.14)))
-            print("%.2f %.2f %.2f %.2f"%(float(q[0]), float(q[1]), float(q[2]), float(q[3])))
+            print("%.2f %.2f %.2f"%(r*(180/3.14), p*(180/3.14), y*(180/3.14)))
+            # print("%.2f %.2f %.2f %.2f"%(float(q[0]), float(q[1]), float(q[2]), float(q[3])))

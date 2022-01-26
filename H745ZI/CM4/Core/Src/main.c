@@ -35,7 +35,7 @@
 const uint16_t i2c_timeout = 100;
 
 // System constants
-#define deltat 0.001f // sampling period in seconds (shown as 1 ms)
+#define deltat 0.02f // sampling period in seconds (shown as 1 ms)
 #define gyroMeasError 3.14159265358979f * (5.0f / 180.0f) // gyroscope measurement error in rad/s (shown as 5 deg/s)
 #define beta sqrt(3.0f / 4.0f) * gyroMeasError // compute beta
 
@@ -302,7 +302,13 @@ int main(void)
   MX_GPIO_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
+//  uint8_t MSG[35] = {'\0'};				// Message buffer for debug
+//  int len;		// Length of debug message
+//  len = sprintf(MSG, "aaa");	// Read quaternion from shared memory to print out
+//  HAL_UART_Transmit(&huart3, MSG, len, 100);	// Print quaternion for debug (via serial)
     while (MPU6050_Init(&hi2c1) == 1);		// Wait for sensor to ready
+//    len = sprintf(MSG, "bbb");	// Read quaternion from shared memory to print out
+//      HAL_UART_Transmit(&huart3, MSG, len, 100);	// Print quaternion for debug (via serial)
     MPU6050_Read_Accel(&hi2c1);				// Read accelerometer for first time (initial guess)
     MPU6050_Read_Gyro(&hi2c1);				// Read gyroscope for first time (initial guess)
     HAL_HSEM_FastTake(1);		// Lock shared variable (quaternion)
@@ -312,6 +318,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
   while (1)
   {
 	  presentTime = HAL_GetTick();
@@ -329,6 +336,9 @@ int main(void)
 		  q->z = SEq_3;
 		  q->w = SEq_4;
 		  HAL_HSEM_Release(1, 0);				// Unlock shared variable
+//		  len = sprintf(MSG, "q:%.2f\t%.2f\t%.2f\t%.2f\n", SEq_1, SEq_2, SEq_3, SEq_4);	// Read quaternion from shared memory to print out
+//		  HAL_UART_Transmit(&huart3, MSG, len, 100);	// Print quaternion for debug (via serial)
+
 	  }
     /* USER CODE END WHILE */
 
