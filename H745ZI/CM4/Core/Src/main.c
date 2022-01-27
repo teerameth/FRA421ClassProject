@@ -35,7 +35,7 @@
 const uint16_t i2c_timeout = 100;
 
 // System constants
-#define deltat 0.02f // sampling period in seconds (shown as 1 ms)
+#define deltat 0.02f // sampling period in seconds (shown as 20 ms)
 #define gyroMeasError 3.14159265358979f * (5.0f / 180.0f) // gyroscope measurement error in rad/s (shown as 5 deg/s)
 #define beta sqrt(3.0f / 4.0f) * gyroMeasError // compute beta
 
@@ -321,21 +321,22 @@ int main(void)
 
   while (1)
   {
-	  presentTime = HAL_GetTick();
-	  if (presentTime - lastTime >= 20){	// update filter using frequency <= 50 Hz
-		  lastTime = presentTime;
+	  presentTime = HAL_GetTick();		// Get present time
+	  if (presentTime - lastTime >= 20){	// Update filter using frequency 50 Hz
+		  lastTime = presentTime;		// Update reference time
 		  MPU6050_Read_Accel(&hi2c1);	// Read accelerometer
 		  MPU6050_Read_Gyro(&hi2c1);	// Read gyroscope
 		  filterUpdate();				// Update filter (update variables SEq_1, SEq_2, SEq_3, SEq_4)
-		  while(1){
-			  if (HAL_HSEM_FastTake(1) == HAL_OK)break;	// Wait until memory is unlocked then lock it (quaternion)
+		  if (HAL_HSEM_FastTake(1) == HAL_OK)	// Wait until memory is unlocked then lock it (quaternion)
+		  {
+			  // Update shared quaternion components (x, y, z, w)
+			  q->x = SEq_1;
+			  q->y = SEq_2;
+			  q->z = SEq_3;
+			  q->w = SEq_4;
+			  HAL_HSEM_Release(1, 0);				// Unlock shared variable
 		  }
-		  // Update shared quaternion components (x, y, z, w)
-		  q->x = SEq_1;
-		  q->y = SEq_2;
-		  q->z = SEq_3;
-		  q->w = SEq_4;
-		  HAL_HSEM_Release(1, 0);				// Unlock shared variable
+
 //		  len = sprintf(MSG, "q:%.2f\t%.2f\t%.2f\t%.2f\n", SEq_1, SEq_2, SEq_3, SEq_4);	// Read quaternion from shared memory to print out
 //		  HAL_UART_Transmit(&huart3, MSG, len, 100);	// Print quaternion for debug (via serial)
 
