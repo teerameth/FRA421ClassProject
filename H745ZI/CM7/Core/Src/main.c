@@ -35,12 +35,19 @@
 typedef struct {
 	float x, y, z, w;	// quaternion 4 components
 }quaternion;
-quaternion *q = (quaternion*)(0x38000000);	// Allocated shared memory for to store quaternion globally
+quaternion *q1 = (quaternion*)(0x38000000);	// Allocated shared memory for to store quaternion globally
+quaternion *q;
 
-typedef struct {
-    double roll, pitch, yaw;
-}EulerAngles;
-EulerAngles *angle;
+float r,p,y;
+float ax=0;
+float ay=0;
+float dt=0.5;
+float posx=59.0;
+float posy=55.0;
+float sx=0.0;
+float sy=0.0;
+float vx=0;
+float vy=0;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -208,7 +215,7 @@ void convert2euler(){
 	// roll (x-axis rotation)
 	double sinr_cosp = 2 * (q->w * q->x + q->y * q->z);
 	double cosr_cosp = 1 - 2 * (q->x * q->x + q->y * q->y);
-	angle->roll = atan2(sinr_cosp, cosr_cosp);
+	r = atan2(sinr_cosp, cosr_cosp);
 
 	// pitch (y-axis rotation)
 	double sinp = 2 * (q->w * q->y - q->z * q->x);
@@ -216,12 +223,12 @@ void convert2euler(){
 	    sinp = sinp+1;
 	if (sinp <= -1)
 		sinp = sinp-1;
-	angle->pitch = asin(sinp);
+	p = asin(sinp);
 
 	// yaw (z-axis rotation)
 	double siny_cosp = 2 * (q->w * q->z + q->x * q->y);
 	double cosy_cosp = 1 - 2 * (q->y * q->y + q->z * q->z);
-	angle->yaw = atan2(siny_cosp, cosy_cosp);
+	y = atan2(siny_cosp, cosy_cosp);
 }
 //uint16_t toHighByte(uint16_t num)
 //{
@@ -469,15 +476,8 @@ void Set_All_LED(double x, double y, double z)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	float ax=0;
-	float ay=0;
-	float dt=0.5;
-	float vx=ax*dt;
-	float vy=ay*dt;
-	float posx=59.0;
-	float posy=55.0;
-	float sx=0.0;
-	float sy=0.0;
+	vx=ax*dt;
+	vy=ay*dt;
   /* USER CODE END 1 */
 /* USER CODE BEGIN Boot_Mode_Sequence_0 */
 	int32_t timeout;
@@ -566,23 +566,19 @@ int main(void)
 			}
 
 			// Read shared quaternion components to display
+			*q=*q1;
 //			len = sprintf(MSG, "q:%.2f\t%.2f\t%.2f\t%.2f\n", q->x, q->y, q->z, q->w);	// Read quaternion from shared memory to print out
-
 			HAL_HSEM_Release(1, 0);				// Unlock shared variable
 			//klui
 			convert2euler();
-
 			//klui code
-			if(angle->roll >0){
-				ax=(angle->roll-3.14)*10;
-			}
-			else{
-				ax=(angle->roll+3.14)*10;
-			}
-			ay=(angle->pitch)*10;
-			len = sprintf(MSG, "q:%.2f\t%.2f\n", ax, ay);	// Read quaternion from shared memory to print out
+			ax=(y)*10;
+			ay=(p)*10;
+//			len = sprintf(MSG, "q:%.2f\t%.2f\n", ax, ay);	// Read quaternion from shared memory to print out
+//			len = sprintf(MSG, "q:%.2f\t%.2f\t%.2f\n", r, p, y);	// Read quaternion from shared memory to print out
 
-			HAL_UART_Transmit(&huart3, MSG, len, 100);	// Print quaternion for debug (via serial)
+//			HAL_UART_Transmit(&huart3, MSG, len, 100);	// Print quaternion for debug (via serial)
+
 			vx=ax*dt;	// Update ball x speed
 			vy=ay*dt;	// Update ball y speed
 			sx=vx*dt;
@@ -615,7 +611,7 @@ int main(void)
 			//end klui code
 
 			//make
-			Get_Omega(angle->roll, angle->pitch, angle->yaw);
+			Get_Omega(y, p, r);
 			Set_All_LED(omega_x, omega_y, omega_z);
 			ws2812b_send();
 
