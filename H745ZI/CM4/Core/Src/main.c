@@ -102,7 +102,7 @@ uint8_t MPU6050_Init(I2C_HandleTypeDef *I2Cx) {
 
     HAL_I2C_Mem_Read(I2Cx, MPU6050_ADDR, WHO_AM_I_REG, 1, &check, 1, i2c_timeout);
 
-    if (check == 0x68)  // 0x68 will be returned by the sensor if everything goes well
+    if (check == 0x68)  // If sensor OK -> return 0x68
     {
         // power management register 0X6B we should write all 0's to wake the sensor up
     	data = 0b00001000; // not sleep + disable temperature sensor + use internal 8MHz oscillator as clock source
@@ -128,14 +128,14 @@ uint8_t MPU6050_Init(I2C_HandleTypeDef *I2Cx) {
         data = 0x07;
         HAL_I2C_Mem_Write(I2Cx,
         		MPU6050_ADDR,
-				0x19,			// Sample rate config register
+				0x19,			// Sample rate config register (SMPLRT_DIV)
         		1,
         		&data,
         		1,
         		i2c_timeout);
 
-        // Set accelerometer configuration (+-2g)
-        data = 0x00;
+        // Set accelerometer configuration (+-2g) & Disable self-test
+        data = 0x00;	// (XA_ST, YA_ST, ZA_XT, AFS_SEL)
         HAL_I2C_Mem_Write(I2Cx,
         		MPU6050_ADDR,
 				0x1C,			// ACCEL_CONFIG Register
@@ -144,8 +144,8 @@ uint8_t MPU6050_Init(I2C_HandleTypeDef *I2Cx) {
         		1,
         		i2c_timeout);
 
-        // Set Gyroscope configuration (+= 250deg)
-        data = 0x00;
+        // Set Gyroscope configuration (+= 250deg) & Disable self-test
+        data = 0x00;	// (XG_ST, YG_ST, ZG_ST, FS_SEL)
         HAL_I2C_Mem_Write(I2Cx,
         		MPU6050_ADDR,
 				0x1B,			// GYRO_CONFIG Register
@@ -302,13 +302,7 @@ int main(void)
   MX_GPIO_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-//  uint8_t MSG[35] = {'\0'};				// Message buffer for debug
-//  int len;		// Length of debug message
-//  len = sprintf(MSG, "aaa");	// Read quaternion from shared memory to print out
-//  HAL_UART_Transmit(&huart3, MSG, len, 100);	// Print quaternion for debug (via serial)
     while (MPU6050_Init(&hi2c1) == 1);		// Wait for sensor to ready
-//    len = sprintf(MSG, "bbb");	// Read quaternion from shared memory to print out
-//      HAL_UART_Transmit(&huart3, MSG, len, 100);	// Print quaternion for debug (via serial)
     MPU6050_Read_Accel(&hi2c1);				// Read accelerometer for first time (initial guess)
     MPU6050_Read_Gyro(&hi2c1);				// Read gyroscope for first time (initial guess)
     HAL_HSEM_FastTake(1);		// Lock shared variable (quaternion)
@@ -318,7 +312,6 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
   while (1)
   {
 	  presentTime = HAL_GetTick();		// Get present time
@@ -336,10 +329,6 @@ int main(void)
 			  q->w = SEq_4;
 			  HAL_HSEM_Release(1, 0);				// Unlock shared variable
 		  }
-
-//		  len = sprintf(MSG, "q:%.2f\t%.2f\t%.2f\t%.2f\n", SEq_1, SEq_2, SEq_3, SEq_4);	// Read quaternion from shared memory to print out
-//		  HAL_UART_Transmit(&huart3, MSG, len, 100);	// Print quaternion for debug (via serial)
-
 	  }
     /* USER CODE END WHILE */
 
