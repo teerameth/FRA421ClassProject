@@ -89,6 +89,9 @@ RTC_HandleTypeDef hrtc;
 SPI_HandleTypeDef hspi1;
 DMA_HandleTypeDef hdma_spi1_tx;
 
+TIM_HandleTypeDef htim1;
+DMA_HandleTypeDef hdma_tim1_ch1;
+
 UART_HandleTypeDef huart3;
 DMA_HandleTypeDef hdma_usart3_rx;
 DMA_HandleTypeDef hdma_usart3_tx;
@@ -135,6 +138,7 @@ static void MX_SPI1_Init(void);
 static void MX_USB_OTG_FS_PCD_Init(void);
 static void MX_RTC_Init(void);
 static void MX_USART3_UART_Init(void);
+static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -318,6 +322,144 @@ void clearScreen(){
 //			HAL_Delay(1);
 	}
 }
+
+//make
+#define MAX_LED 8
+#define USE_BRIGHTNESS 1
+
+uint8_t LED_Data[MAX_LED][4];
+uint8_t LED_Mod[MAX_LED][4]; // for brightness
+
+int datasentflag=0;
+
+void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
+{
+	HAL_TIMEx_PWMN_Stop_DMA(&htim1, TIM_CHANNEL_1);
+	datasentflag=1;
+}
+
+void Set_LED(int LEDnum, int Red, int Green, int Blue)
+{
+	LED_Data[LEDnum][0]=LEDnum;
+	LED_Data[LEDnum][1]=Green;
+	LED_Data[LEDnum][2]=Red;
+	LED_Data[LEDnum][3]=Blue;
+}
+
+#define PI 3.141459265
+
+void Set_Brightness(int brightness)
+{
+#if USE_BRIGHTNESS
+	if (brightness > 45) brightness = 45;
+	for(int i=0; i<MAX_LED; i++)
+	{
+		LED_Mod[i][0] = LED_Data[i][0];
+		for(int j=1; j<4; j++)
+		{
+			float angle = 90 - brightness;
+			angle = angle*PI/180;
+			LED_Mod[i][j] = (LED_Data[i][j])/(tan(angle));
+		}
+	}
+#endif
+}
+
+uint16_t pwmData[(24*MAX_LED)+50];
+
+void ws2812b_send(void)
+{
+	uint32_t indx=0;
+	uint32_t color;
+
+
+	for (int i= 0; i<MAX_LED; i++)
+	{
+	#if USE_BRIGHTNESS
+			color = ((LED_Mod[i][1]<<16) | (LED_Mod[i][2]<<8) | (LED_Mod[i][3]));
+	#else
+			color = ((LED_Data[i][1]<<16) | (LED_Data[i][2]<<8) | (LED_Data[i][3]));
+	#endif
+
+			for (int i=23; i>=0; i--)
+			{
+				if (color&(1<<i))
+				{
+					pwmData[indx] = 200;  // 2/3 of 300
+				}
+
+				else pwmData[indx] = 100;  // 1/3 of 300
+
+				indx++;
+			}
+
+	}
+
+	for (int i=0; i<50; i++)
+	{
+		pwmData[indx] = 0;
+		indx++;
+	}
+
+	HAL_TIM_PWM_Start_DMA(&htim1, TIM_CHANNEL_1, (uint32_t *)pwmData, indx);
+	while (!datasentflag){};
+	datasentflag = 0;
+}
+
+double old_angle_x = 0;
+double old_angle_y = 0;
+double old_angle_z = 0;
+double omega_x;
+double omega_y;
+double omega_z;
+
+void Get_Omega(double new_angle_x, double new_angle_y, double new_angle_z)
+{
+	omega_x = fabs(new_angle_x - old_angle_x);
+	omega_y = fabs(new_angle_y - old_angle_y);
+	omega_z = fabs(new_angle_z - old_angle_z);
+
+	if(omega_x > 6)
+	{
+		omega_x = 0.3;
+	}
+
+	if(omega_y > 6)
+	{
+		omega_y = 0.3;
+	}
+
+	if(omega_z > 6)
+	{
+		omega_z = 0.3;
+	}
+
+	old_angle_x = new_angle_x;
+	old_angle_y = new_angle_y;
+	old_angle_z = new_angle_z;
+}
+
+void Set_All_LED(double x, double y, double z)
+{
+	int red = x*40;
+	int green = y*40;
+	int blue = z*40;
+
+	for(int i=0; i<8; i++)
+	{
+		Set_LED(i,red,green,blue);
+	}
+
+	if (x+y+z > 6)
+	{
+		Set_Brightness(45);
+	}
+	else
+	{
+		Set_Brightness((x+y+z)*7);
+	}
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -391,6 +533,7 @@ int main(void)
   MX_USB_OTG_FS_PCD_Init();
   MX_RTC_Init();
   MX_USART3_UART_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
 
 //	uint8_t x = 0;
@@ -470,6 +613,12 @@ int main(void)
 			}
 
 			//end klui code
+
+			//make
+			Get_Omega(angle->roll, angle->pitch, angle->yaw);
+			Set_All_LED(omega_x, omega_y, omega_z);
+			ws2812b_send();
+
 		}
     /* USER CODE END WHILE */
 
@@ -728,6 +877,86 @@ static void MX_SPI1_Init(void)
 }
 
 /**
+  * @brief TIM1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM1_Init(void)
+{
+
+  /* USER CODE BEGIN TIM1_Init 0 */
+
+  /* USER CODE END TIM1_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
+
+  /* USER CODE BEGIN TIM1_Init 1 */
+
+  /* USER CODE END TIM1_Init 1 */
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 0;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 600-1;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
+  sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+  sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
+  sBreakDeadTimeConfig.DeadTime = 0;
+  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
+  sBreakDeadTimeConfig.BreakFilter = 0;
+  sBreakDeadTimeConfig.Break2State = TIM_BREAK2_DISABLE;
+  sBreakDeadTimeConfig.Break2Polarity = TIM_BREAK2POLARITY_HIGH;
+  sBreakDeadTimeConfig.Break2Filter = 0;
+  sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+  if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM1_Init 2 */
+
+  /* USER CODE END TIM1_Init 2 */
+  HAL_TIM_MspPostInit(&htim1);
+
+}
+
+/**
   * @brief USART3 Initialization Function
   * @param None
   * @retval None
@@ -830,6 +1059,9 @@ static void MX_DMA_Init(void)
   /* DMA1_Stream2_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Stream2_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream2_IRQn);
+  /* DMA1_Stream3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream3_IRQn);
 
 }
 
@@ -846,6 +1078,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOG_CLK_ENABLE();
