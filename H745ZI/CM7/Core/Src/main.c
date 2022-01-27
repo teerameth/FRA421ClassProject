@@ -40,6 +40,7 @@ quaternion *q = (quaternion*)(0x38000000);	// Allocated shared memory for to sto
 typedef struct {
     double roll, pitch, yaw;
 }EulerAngles;
+EulerAngles *angle;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -198,27 +199,25 @@ void coodinate2framememory(){
 		}
 	}
 }
-EulerAngles convert2euler(quaternion q){
-	EulerAngles angles;
+void convert2euler(){
 
 	// roll (x-axis rotation)
-	double sinr_cosp = 2 * (q.w * q.x + q.y * q.z);
-	double cosr_cosp = 1 - 2 * (q.x * q.x + q.y * q.y);
-	angles.roll = atan2(sinr_cosp, cosr_cosp);
+	double sinr_cosp = 2 * (q->w * q->x + q->y * q->z);
+	double cosr_cosp = 1 - 2 * (q->x * q->x + q->y * q->y);
+	angle->roll = atan2(sinr_cosp, cosr_cosp);
 
 	// pitch (y-axis rotation)
-	double sinp = 2 * (q.w * q.y - q.z * q.x);
-	if (abs(sinp) >= 1)
-	    angles.pitch = copysign(M_PI / 2, sinp); // use 90 degrees if out of range
-	else
-	    angles.pitch = asin(sinp);
+	double sinp = 2 * (q->w * q->y - q->z * q->x);
+	if (sinp >= 1)
+	    sinp = sinp+1;
+	if (sinp <= -1)
+		sinp = sinp-1;
+	angle->pitch = asin(sinp);
 
 	// yaw (z-axis rotation)
-	double siny_cosp = 2 * (q.w * q.z + q.x * q.y);
-	double cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
-	angles.yaw = atan2(siny_cosp, cosy_cosp);
-
-	return angles;
+	double siny_cosp = 2 * (q->w * q->z + q->x * q->y);
+	double cosy_cosp = 1 - 2 * (q->y * q->y + q->z * q->z);
+	angle->yaw = atan2(siny_cosp, cosy_cosp);
 }
 //uint16_t toHighByte(uint16_t num)
 //{
@@ -328,13 +327,13 @@ void clearScreen(){
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	float ax=10.0;
-	float ay=5.0;
+	float ax=0;
+	float ay=0;
 	float dt=0.5;
 	float vx=ax*dt;
 	float vy=ay*dt;
-	float posx=10.0;
-	float posy=10.0;
+	float posx=59.0;
+	float posy=55.0;
 	float sx=0.0;
 	float sy=0.0;
   /* USER CODE END 1 */
@@ -422,13 +421,27 @@ int main(void)
 			while(1){
 				if(HAL_HSEM_FastTake(1) == HAL_OK) break;	// Wait until shared memory is available then lock it
 			}
+
 			// Read shared quaternion components to display
-			len = sprintf(MSG, "q:%.2f\t%.2f\t%.2f\t%.2f\n", q->x, q->y, q->z, q->w);	// Read quaternion from shared memory to print out
+//			len = sprintf(MSG, "q:%.2f\t%.2f\t%.2f\t%.2f\n", q->x, q->y, q->z, q->w);	// Read quaternion from shared memory to print out
 
 			HAL_HSEM_Release(1, 0);				// Unlock shared variable
+			//klui
+			convert2euler();
+
+			//klui code
+			if(angle->roll >0){
+				ax=(angle->roll-3.14)*10;
+			}
+			else{
+				ax=(angle->roll+3.14)*10;
+			}
+			ay=(angle->pitch)*10;
+			len = sprintf(MSG, "q:%.2f\t%.2f\n", ax, ay);	// Read quaternion from shared memory to print out
 
 			HAL_UART_Transmit(&huart3, MSG, len, 100);	// Print quaternion for debug (via serial)
-			//klui code
+			vx=ax*dt;	// Update ball x speed
+			vy=ay*dt;	// Update ball y speed
 			sx=vx*dt;
 			sy=vy*dt;
 			posx+=sx;
@@ -436,18 +449,26 @@ int main(void)
 			clearPosition();
 			circle(round(posx),round(posy),10);
 			coodinate2framememory();
-			if(posx>=118 || posx<=0){
-				vx=-vx;
+
+			// Limit x position
+			if(posx>118 || (posx==118 && vx>0)){
+				vx=0;
+				posx=118;
 			}
-			else{
-				vx=ax*dt;
+			else if(posx<0 || (posx==0 && vx<0)){
+				vx=0;
+				posx=0;
 			}
-			if(posy>=110 || posy<=0){
-				vy=-vy;
+			// Limit y position
+			if(posy>110 || (posy==110 && vy>0)){
+				vy=0;
+				posy=110;
 			}
-			else{
-				vy=ay*dt;
+			else if(posy<0 || (posy==0 && vy<0)){
+				vy=0;
+				posy=0;
 			}
+
 			//end klui code
 		}
     /* USER CODE END WHILE */
